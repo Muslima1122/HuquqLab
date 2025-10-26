@@ -1,18 +1,38 @@
 from flask import Flask, request, jsonify
+import os
 import openai
 
 app = Flask(__name__)
 
-@app.route('/')
+# OpenAI API kalitini olish
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+@app.route("/")
 def home():
-    return "HuquqLab AI xizmati ishga tushdi!"
+    return "<h1>HuquqLab AI Server ishlayapti!</h1>"
 
-@app.route('/ask', methods=['POST'])
+@app.route("/ask", methods=["POST"])
 def ask():
-    data = request.json
+    data = request.get_json()
     question = data.get("question", "")
-    # Bu joyda hozircha AI javobi emulyatsiya qilinadi (keyin haqiqiy OpenAI API ulanadi)
-    return jsonify({"answer": f"Siz so‘radingiz: {question}. AI javobi bu yerda chiqadi."})
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    if not question:
+        return jsonify({"error": "Savol yuborilmadi"}), 400
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Siz huquqiy masalalarda yordam beruvchi AI yordamchisiz."},
+                {"role": "user", "content": question}
+            ]
+        )
+        answer = response.choices[0].message.content
+        return jsonify({"answer": answer})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
